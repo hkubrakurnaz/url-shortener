@@ -1,4 +1,4 @@
-package encoder
+package base62
 
 import (
 	"errors"

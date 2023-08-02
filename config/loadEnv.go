@@ -1,6 +1,9 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+	"log"
+)
 
 type Config struct {
 	DBHost         string `mapstructure:"POSTGRES_HOST"`
@@ -21,9 +24,14 @@ func LoadConfig(path string) (config Config, err error) {
 
 	err = viper.ReadInConfig()
 	if err != nil {
+		log.Fatal("Failed to read config! \n", err.Error())
 		return
 	}
 
 	err = viper.Unmarshal(&config)
+	if err != nil {
+		log.Fatal("Failed to unmarshal config! \n", err.Error())
+		return
+	}
 	return
 }

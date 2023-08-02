@@ -4,7 +4,7 @@ import (
 	"time"
 	"url-shortener/model"
 	"url-shortener/repository/url"
-	"url-shortener/service/encoder"
+	"url-shortener/service/base62"
 )
 
 type Service interface {
@@ -13,31 +13,37 @@ type Service interface {
 }
 
 type service struct {
-	encoderService encoder.Service
+	encoderService base62.Service
 	urlRepository  url.Repository
 }
 
-func (s service) CreateShortUrl(longUrl string) (string, error) {
+func (s service) CreateShortUrl(longUrl string) (shortUrl string, err error) {
 	urlModel := model.Url{
 		LongUrl:   longUrl,
 		CreatedAt: time.Time{},
 	}
 
 	id, err := s.urlRepository.Create(urlModel)
-	shortUrl := s.encoderService.Encode(id)
+	if err != nil {
+		return
+	}
+	shortUrl = s.encoderService.Encode(id)
 
 	err = s.urlRepository.Update(id, shortUrl)
 
-	return shortUrl, err
+	return
 }
 
 func (s service) GetLongUrl(shortUrl string) (string, error) {
-	id, _ := s.encoderService.Decode(shortUrl)
-	response, err := s.urlRepository.GetLongUrl(id)
+	id, err := s.encoderService.Decode(shortUrl)
+	if err != nil {
+		return "", err
+	}
 
+	response, err := s.urlRepository.Get(id)
 	return response.LongUrl, err
 }
 
-func New(encoderService encoder.Service, urlRepository url.Repository) Service {
+func New(encoderService base62.Service, urlRepository url.Repository) Service {
 	return &service{encoderService: encoderService, urlRepository: urlRepository}
 }

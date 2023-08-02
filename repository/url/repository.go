@@ -1,37 +1,38 @@
 package url
 
 import (
-	"url-shortener/config"
+	"gorm.io/gorm"
 	"url-shortener/model"
 )
 
 type Repository interface {
-	GetLongUrl(id uint64) (model.Url, error)
+	Get(id uint64) (model.Url, error)
 	Create(url model.Url) (uint64, error)
 	Update(id uint64, shortUrl string) error
 }
 type repository struct {
+	DB *gorm.DB
 }
 
 func (r repository) Create(url model.Url) (uint64, error) {
 	var id model.Url
-	err := config.DB.Create(&url).Scan(&id)
+	err := r.DB.Create(&url).Scan(&id)
 
 	return id.ID, err.Error
 }
 
 func (r repository) Update(id uint64, shortUrl string) error {
-	err := config.DB.Model(&model.Url{}).Where("id = ?", id).Update("short_url", shortUrl)
+	err := r.DB.Model(&model.Url{}).Where("id = ?", id).Update("short_url", shortUrl)
 
 	return err.Error
 }
 
-func (r repository) GetLongUrl(id uint64) (model.Url, error) {
+func (r repository) Get(id uint64) (model.Url, error) {
 	var url model.Url
-	err := config.DB.First(&url, "id= ?", id)
+	err := r.DB.First(&url, "id= ?", id)
 	return url, err.Error
 }
 
-func New() Repository {
-	return &repository{}
+func New(DB *gorm.DB) Repository {
+	return &repository{DB: DB}
 }
