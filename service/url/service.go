@@ -1,6 +1,7 @@
-package url
+package url_service
 
 import (
+	"sync"
 	"time"
 	"url-shortener/model"
 	"url-shortener/repository/url"
@@ -10,11 +11,50 @@ import (
 type Service interface {
 	CreateShortUrl(longUrl string) (string, error)
 	GetLongUrl(shortUrl string) (string, error)
+	CreateShortUrls(longUrls []string) ([]CreateUrlItem, error)
 }
 
 type service struct {
 	encoderService base62.Service
 	urlRepository  url.Repository
+}
+
+func (s service) CreateShortUrls(longUrls []string) ([]CreateUrlItem, error) {
+	urlItems := s.generateShortUrls(longUrls)
+
+	var response []CreateUrlItem
+	for result := range urlItems {
+		if result.Error != nil {
+			return nil, result.Error
+		} else {
+			response = append(response, result)
+		}
+	}
+
+	return response, nil
+}
+
+func (s service) generateShortUrls(longUrls []string) chan CreateUrlItem {
+	results := make(chan CreateUrlItem, len(longUrls))
+
+	var wg sync.WaitGroup
+	wg.Add(len(longUrls))
+
+	for _, longUrl := range longUrls {
+		go func(url string) {
+			defer wg.Done()
+			shortUrl, err := s.CreateShortUrl(url)
+			results <- CreateUrlItem{
+				ShortUrl: shortUrl,
+				LongUrl:  url,
+				Error:    err,
+			}
+		}(longUrl)
+	}
+
+	wg.Wait()
+	close(results)
+	return results
 }
 
 func (s service) CreateShortUrl(longUrl string) (shortUrl string, err error) {
